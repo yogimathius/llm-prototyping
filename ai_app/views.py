@@ -33,6 +33,40 @@ def get_response(prompt, message_history):
         print(f"Error occurred while getting response: {e}")
         return None
 
+def get_ai_response(analysis, original_prompt):
+    prompt = f"""
+    You are an AI assistant tasked with synthesizing an analysis and crafting a response to a user's question about the meaning of life. 
+    
+    Original user question: "{original_prompt}"
+    
+    Analysis from multiple perspectives:
+    {analysis}
+    
+    Based on this analysis, craft a thoughtful, engaging, and concise response to the user's original question. The response should:
+    1. Acknowledge the complexity and subjectivity of the question
+    2. Offer multiple perspectives (e.g., philosophical, scientific, cultural)
+    3. Encourage personal reflection
+    4. Maintain an open and inclusive tone
+    5. Invite the user to continue their own exploration of the topic
+    
+    Your response should be written in markdown format for easy formatting.
+    """
+
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant synthesizing information to answer philosophical questions."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error occurred while getting AI response: {e}")
+        return None
+
 @csrf_exempt
 @require_POST
 def receive_prompt(request):
@@ -70,10 +104,18 @@ def receive_prompt(request):
                     print(f"Failed to get {role.name} response. Skipping turn.")
                     continue
 
-        return JsonResponse({
-            'original_prompt': user_prompt,
-            'conversation': conversation
-        })
+        # Generate AI response based on the analysis
+        analysis = "\n\n".join([f"{turn['role']}: {turn['response']}" for turn in conversation])
+        ai_response = get_ai_response(analysis, user_prompt)
+
+        if ai_response:
+            return JsonResponse({
+                'original_prompt': user_prompt,
+                'conversation': conversation,
+                'ai_response': ai_response
+            })
+        else:
+            return JsonResponse({'error': 'Failed to generate AI response'}, status=500)
 
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
