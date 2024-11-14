@@ -17,6 +17,19 @@ client = OpenAI(
 
 
 @csrf_exempt
+def get_all_roles(request):
+    roles = LLMRole.objects.all()
+    roles_data = [
+        {
+            "name": role.name,
+            "description": role.description,
+        }
+        for role in roles
+    ]
+    return JsonResponse({"roles": roles_data}, safe=False)
+
+
+@csrf_exempt
 @require_POST
 def ask_role(request):
     """Handle single role-based question-answer"""
