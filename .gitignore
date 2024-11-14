@@ -11,3 +11,8 @@ venv
 frontend/node_modules
 frontend/.next
 frontend/.env.local
+
+*.pyc
+.DS_Store
+*.ipynb
+.ipynb_checkpoints/
