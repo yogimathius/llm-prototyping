@@ -4,10 +4,10 @@
    - Analyzes if the question would benefit from another perspective
    - Determines which other role would be most relevant to consult
 
-2. **Role Selection Criteria**
+2. **Role Selection Criteria** ✅
 
-   - Define specific triggers or keywords that suggest need for collaboration
-   - Create a mapping of which roles complement each other
+   - Define specific triggers or keywords that suggest need for collaboration ✅
+   - Create a mapping of which roles complement each other ✅
    - Example pairs:
      - Dream Interpreter + Consciousness Explorer for symbolic meanings
      - Philosopher + Psychologist for behavioral questions
