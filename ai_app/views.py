@@ -6,6 +6,7 @@ import os
 from ai_app.models import History, LLMRole, User
 from openai import OpenAI
 import logging
+from django.forms.models import model_to_dict
 
 logger = logging.getLogger("ai_app")
 
@@ -101,5 +102,14 @@ def ask_role(request):
 
 @csrf_exempt
 def get_history(request):
-    history = History.objects.all()
-    return JsonResponse({"history": list(history)}, safe=False)
+    history = History.objects.all().order_by("-created_at")
+
+    history_data = [
+        model_to_dict(item, fields=["id", "prompt", "response"]) for item in history
+    ]
+
+    for i, item in enumerate(history):
+        history_data[i]["role"] = item.role.name if item.role else None
+        history_data[i]["created_at"] = item.created_at.isoformat()
+
+    return JsonResponse({"history": history_data})
