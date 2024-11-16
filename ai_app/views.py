@@ -122,17 +122,14 @@ Collaborative Perspective ({collaborator.name}): {collaborator.description}
 
 Reason for collaboration: {collab_decision["reasoning"]}
 
-Please structure your response as a dialogue between these two perspectives, where each takes turns sharing their unique insights. Format as:
-
-{role.name}: [Initial perspective on the question]
-
-{collaborator.name}: [Responds with their unique perspective, building on or contrasting the previous point]
-
-{role.name}: [Builds on the collaborator's insight, adding deeper understanding]
-
-{collaborator.name}: [Offers final insights or synthesis]
-
-Synthesis: [A brief conclusion drawing from both perspectives]
+Please structure your response as a JSON array of role-response pairs. Format as:
+[
+    {{"role": "{role.name}", "response": "Initial perspective on the question"}},
+    {{"role": "{collaborator.name}", "response": "Response with unique perspective"}},
+    {{"role": "{role.name}", "response": "Building on the collaborator's insight"}},
+    {{"role": "{collaborator.name}", "response": "Final insights"}},
+    {{"role": "Synthesis", "response": "Brief conclusion drawing from both perspectives"}}
+]
 
 Remember to maintain each role's unique character and perspective while creating a meaningful dialogue."""
 
@@ -145,13 +142,20 @@ Remember to maintain each role's unique character and perspective while creating
                 )
                 system_prompt = role.prompt_template
         else:
-            system_prompt = role.prompt_template
-            logger.info("No collaboration needed")
+            # For non-collaborative responses, wrap single response in array format
+            system_prompt = f"""You are {role.name}.
+
+{role.prompt_template}
+
+Please structure your response as a JSON array with a single role-response pair:
+[
+    {{"role": "{role.name}", "response": "Your complete response here"}}
+]"""
 
         # Generate final response
         try:
             response = client.chat.completions.create(
-                model="gpt-4o",  # Changed from gpt-4
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
@@ -159,6 +163,14 @@ Remember to maintain each role's unique character and perspective while creating
                 temperature=0.7,
             )
 
+            # Parse the JSON response
+            content = response.choices[0].message.content
+            clean_content = (
+                content.replace("```json\n", "").replace("\n```", "").strip()
+            )
+            response_data = json.loads(clean_content)
+
+            # Store the full conversation in history
             History.objects.create(
                 user=User.objects.get(username="testuser"),
                 role=role,
@@ -168,7 +180,7 @@ Remember to maintain each role's unique character and perspective while creating
 
             return JsonResponse(
                 {
-                    "response": response.choices[0].message.content,
+                    "response": response_data,
                     "collaboration": (
                         collab_decision
                         if collab_decision.get("should_collaborate")
