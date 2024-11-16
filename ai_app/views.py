@@ -159,6 +159,13 @@ Remember to maintain each role's unique character and perspective while creating
                 temperature=0.7,
             )
 
+            History.objects.create(
+                user=User.objects.get(username="testuser"),
+                role=role,
+                prompt=user_prompt,
+                response=response.choices[0].message.content,
+            )
+
             return JsonResponse(
                 {
                     "response": response.choices[0].message.content,
@@ -182,10 +189,12 @@ Remember to maintain each role's unique character and perspective while creating
 @csrf_exempt
 def get_history(request):
     history = History.objects.all().order_by("-created_at")
-
+    logger.info(f"History: {history}")
     history_data = [
         model_to_dict(item, fields=["id", "prompt", "response"]) for item in history
     ]
+
+    logger.info(f"History data: {history_data}")
 
     for i, item in enumerate(history):
         history_data[i]["role"] = item.role.name if item.role else None
