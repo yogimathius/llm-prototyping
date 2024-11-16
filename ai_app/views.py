@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 import json
 import os
-from ai_app.models import LLMRole
+from ai_app.models import History, LLMRole
 from openai import OpenAI
 import logging
 
@@ -67,6 +67,14 @@ def ask_role(request):
             ai_response = response.choices[0].message.content
             logger.info("Successfully generated response")
             logger.debug(f"Response length: {len(ai_response)}")
+
+            # Save to history
+            History.objects.create(
+                user=request.user if request.user.is_authenticated else None,
+                role=role,
+                prompt=user_prompt,
+                response=ai_response,
+            )
 
             return JsonResponse(
                 {
