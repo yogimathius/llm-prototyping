@@ -16,3 +16,4 @@ frontend/.env.local
 .DS_Store
 *.ipynb
 .ipynb_checkpoints/
+debug.log
