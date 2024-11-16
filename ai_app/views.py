@@ -93,3 +93,9 @@ def ask_role(request):
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def get_history(request):
+    history = History.objects.all()
+    return JsonResponse({"history": list(history)}, safe=False)
