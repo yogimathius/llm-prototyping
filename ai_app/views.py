@@ -115,14 +115,26 @@ def ask_role(request):
                     name=collab_decision["chosen_collaborator"]
                 )
 
-                system_prompt = f"""You are {role.name} collaborating with {collaborator.name}.
-                
-Primary perspective: {role.description}
-Collaborative perspective: {collaborator.description}
+                system_prompt = f"""You are hosting a dialogue between {role.name} and {collaborator.name}.
+
+Primary Perspective ({role.name}): {role.description}
+Collaborative Perspective ({collaborator.name}): {collaborator.description}
 
 Reason for collaboration: {collab_decision["reasoning"]}
 
-Please provide a response that incorporates insights from both perspectives."""
+Please structure your response as a dialogue between these two perspectives, where each takes turns sharing their unique insights. Format as:
+
+{role.name}: [Initial perspective on the question]
+
+{collaborator.name}: [Responds with their unique perspective, building on or contrasting the previous point]
+
+{role.name}: [Builds on the collaborator's insight, adding deeper understanding]
+
+{collaborator.name}: [Offers final insights or synthesis]
+
+Synthesis: [A brief conclusion drawing from both perspectives]
+
+Remember to maintain each role's unique character and perspective while creating a meaningful dialogue."""
 
                 logger.info(
                     f"Collaborating with {collaborator.name}: {collab_decision['reasoning']}"
