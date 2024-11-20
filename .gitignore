@@ -17,3 +17,4 @@ frontend/.env.local
 *.ipynb
 .ipynb_checkpoints/
 debug.log
+ai_project/__pycache__/settings.cpython-312.pyc
