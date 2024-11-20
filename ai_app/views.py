@@ -8,6 +8,8 @@ from openai import OpenAI
 import logging
 from django.forms.models import model_to_dict
 from textwrap import dedent
+from langchain_ollama import OllamaLLM
+from langchain.chains import RetrievalQA
 
 logger = logging.getLogger("ai_app")
 
@@ -16,6 +18,7 @@ client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
     api_key=os.environ["GITHUB_TOKEN"],
 )
+ollama = OllamaLLM(base_url="http://localhost:11434", model="llama2")
 
 
 @csrf_exempt
@@ -67,17 +70,18 @@ def ask_role(request):
 
     # Generate final response
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.7,
-        )
+        # response = client.chat.completions.create(
+        #     model="gpt-4o",
+        #     messages=[
+        #         {"role": "system", "content": system_prompt},
+        #         {"role": "user", "content": user_prompt},
+        #     ],
+        #     temperature=0.7,
+        # )
+        response = ollama.invoke(system_prompt + "\n\n" + user_prompt)
 
-        content = response.choices[0].message.content
-        clean_content = content.replace("```json\n", "").replace("\n```", "").strip()
+        # content = response.choices[0].message.content
+        clean_content = response.replace("```json\n", "").replace("\n```", "").strip()
         response_data = json.loads(clean_content)
 
         # Store conversation
@@ -85,7 +89,7 @@ def ask_role(request):
             user=User.objects.get(username="testuser"),
             role=role,
             prompt=user_prompt,
-            response=content,
+            response=response,
         )
 
         return JsonResponse(
@@ -135,14 +139,16 @@ def get_collaboration_decision(role, user_prompt, collaborators):
     """
     )
 
-    collab_response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": collaboration_context}],
-        temperature=0.7,
-    )
+    # collab_response = client.chat.completions.create(
+    #     model="gpt-4o",
+    #     messages=[{"role": "user", "content": collaboration_context}],
+    #     temperature=0.7,
+    # )
+    collab_response = ollama.invoke(collaboration_context)
 
-    content = collab_response.choices[0].message.content
-    clean_content = content.replace("```json\n", "").replace("\n```", "").strip()
+    clean_content = (
+        collab_response.replace("```json\n", "").replace("\n```", "").strip()
+    )
     return json.loads(clean_content)
 
 
