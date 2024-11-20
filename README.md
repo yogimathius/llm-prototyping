@@ -80,13 +80,13 @@ for role_data in roles:
 Run the initialization script:
 
 ```bash
-python manage.py shell < scripts/initialize_roles.py
+python manage.py initialize_roles.py
 ```
 
 Create a mock user:
 
 ```bash
-python manage.py shell < scripts/initialize_mock_user.py
+python manage.py initialize_mock_user.py
 ```
 
 7. Start the development server:
