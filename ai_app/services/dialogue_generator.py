@@ -1,6 +1,7 @@
 from textwrap import dedent
 import json
 import logging
+from typing import Dict
 
 from ai_app.models import LLMRole
 from .model_rotation import OpenAIService
@@ -130,3 +131,79 @@ Keep your response concise and under 250 words."""
             temperature=0.7,
             max_tokens=400,
         )
+
+    def process_single_role(self, role_name: str, user_prompt: str) -> Dict:
+        """Handle single role dialogue with optional collaboration"""
+        role = LLMRole.objects.prefetch_related("collaborators").get(name=role_name)
+        collaborators = role.collaborators.all()
+
+        collab_decision = self.get_collaboration_decision(
+            role, user_prompt, collaborators
+        )
+        system_prompt = self.create_system_prompt(role, collab_decision)
+
+        content = self.openai_service.create_completion(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+
+        clean_content = content.replace("```json\n", "").replace("\n```", "").strip()
+        return {
+            "response_data": json.loads(clean_content),
+            "collab_decision": collab_decision,
+            "role": role,
+            "raw_content": content,
+        }
+
+    def process_full_dialogue(self, user_prompt: str) -> Dict:
+        """Handle multi-role dialogue with synthesis"""
+        roles = list(LLMRole.objects.all())
+        logger.info(f"Processing dialogue with roles: {[role.name for role in roles]}")
+
+        conversation = []
+        dialogue_context = ""
+
+        for i, role in enumerate(roles):
+            try:
+                role_response = self.generate_role_response(
+                    role=role,
+                    user_prompt=user_prompt,
+                    dialogue_context=dialogue_context,
+                )
+
+                conversation.append(
+                    {"turn": i + 1, "role": role.name, "response": role_response}
+                )
+
+                dialogue_context += f"\n\n{role.name}: {role_response}"
+
+            except Exception as e:
+                logger.error(f"Error getting response for {role.name}: {str(e)}")
+                continue
+
+        final_response = None
+        if conversation:
+            try:
+                final_response = self.generate_synthesis(
+                    user_prompt=user_prompt, dialogue_context=dialogue_context
+                )
+
+                conversation.append(
+                    {
+                        "turn": len(conversation) + 1,
+                        "role": "Synthesis",
+                        "response": final_response,
+                    }
+                )
+
+            except Exception as e:
+                logger.error(f"Error generating synthesis: {str(e)}")
+                raise
+
+        return {
+            "conversation": conversation,
+            "final_analysis": final_response,
+            "dialogue_context": dialogue_context,
+        }
