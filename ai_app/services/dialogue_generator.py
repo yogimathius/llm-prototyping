@@ -3,8 +3,8 @@ import json
 import logging
 from typing import Dict
 
-from ai_app.models import LLMRole
-from .model_rotation import OpenAIService
+from ai_app.models.llm_role import LLMRole
+from ai_app.services.model_rotation import OpenAIService
 
 logger = logging.getLogger("ai_app")
 
@@ -207,3 +207,65 @@ Keep your response concise and under 250 words."""
             "final_analysis": final_response,
             "dialogue_context": dialogue_context,
         }
+
+    def stream_full_dialogue(self, user_prompt: str):
+        """Stream each role's response as it's generated"""
+        roles = list(LLMRole.objects.all())
+        logger.info(f"Processing dialogue with roles: {[role.name for role in roles]}")
+
+        dialogue_context = ""
+
+        for i, role in enumerate(roles):
+            try:
+                # First yield a "thinking" message
+                yield {"type": "thinking", "data": {"turn": i + 1, "role": role.name}}
+
+                # Generate and yield the response
+                role_response = self.generate_role_response(
+                    role=role,
+                    user_prompt=user_prompt,
+                    dialogue_context=dialogue_context,
+                )
+
+                response_data = {
+                    "type": "response",
+                    "data": {
+                        "turn": i + 1,
+                        "role": role.name,
+                        "response": role_response,
+                    },
+                }
+
+                dialogue_context += f"\n\n{role.name}: {role_response}"
+                yield response_data
+
+            except Exception as e:
+                logger.error(f"Error getting response for {role.name}: {str(e)}")
+                yield {"type": "error", "data": {"role": role.name, "error": str(e)}}
+                continue
+
+        # Generate synthesis after all responses
+        if dialogue_context:
+            try:
+                # Yield thinking message for synthesis
+                yield {
+                    "type": "thinking",
+                    "data": {"turn": len(roles) + 1, "role": "Synthesis"},
+                }
+
+                final_response = self.generate_synthesis(
+                    user_prompt=user_prompt, dialogue_context=dialogue_context
+                )
+
+                yield {
+                    "type": "synthesis",
+                    "data": {
+                        "turn": len(roles) + 1,
+                        "role": "Synthesis",
+                        "response": final_response,
+                    },
+                }
+
+            except Exception as e:
+                logger.error(f"Error generating synthesis: {str(e)}")
+                yield {"type": "error", "data": {"role": "Synthesis", "error": str(e)}}
