@@ -1,9 +1,11 @@
 from django.urls import path
-from . import views
+from .views.roles import list_roles
+from .views.dialogue import ask_role, full_dialogue
+from .views.history import get_conversation_history
 
 urlpatterns = [
-    path("ask-role/", views.ask_role, name="ask_role"),
-    path("get-all-roles/", views.get_all_roles, name="get_all_roles"),
-    path("get-history/", views.get_history, name="get_history"),
-    path("full-dialogue/", views.full_dialogue, name="full_dialogue"),
+    path("roles/", list_roles, name="list_roles"),
+    path("ask-role/", ask_role, name="ask_role"),
+    path("history/", get_conversation_history, name="get_history"),
+    path("full-dialogue/", full_dialogue, name="full_dialogue"),
 ]
