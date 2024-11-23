@@ -25,6 +25,8 @@ client = OpenAI(
     api_key=GITHUB_TOKEN,
 )
 
+model_name = "gpt-4o-mini"
+
 
 @csrf_exempt
 def get_all_roles(request):
@@ -76,7 +78,7 @@ def ask_role(request):
     # Generate final response
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=model_name,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -144,7 +146,7 @@ def get_collaboration_decision(role, user_prompt, collaborators):
     )
 
     collab_response = client.chat.completions.create(
-        model="gpt-4o",
+        model=model_name,
         messages=[{"role": "user", "content": collaboration_context}],
         temperature=0.7,
     )
@@ -220,7 +222,7 @@ def get_history(request):
 def get_response(prompt, message_history):
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=model_name,
             messages=message_history,
             temperature=1.0,
             top_p=1.0,
@@ -238,39 +240,128 @@ def full_dialogue(request):
     try:
         data = json.loads(request.body)
         user_prompt = data.get("prompt")
+        logger.info(f"Received prompt: {user_prompt}")
 
         if not user_prompt:
             return JsonResponse({"error": "No prompt provided"}, status=400)
 
         roles = list(LLMRole.objects.all())
+        logger.info(f"Retrieved roles: {[role.name for role in roles]}")
         conversation = []
-        messages = [
-            {
-                "role": "system",
-                "content": "You are part of a team analyzing a user's input. Respond based on your specific role.",
-            },
-            {"role": "user", "content": f"User Input: {user_prompt}"},
-        ]
-        num_turns = 1  # Number of turns for each role
-        for i in range(num_turns):
-            for role in roles:
-                role_prompt = f"{role.prompt_template}\n\nUser Input: {user_prompt}\n\nProvide your analysis:"
-                messages.append({"role": "system", "content": role_prompt})
+        dialogue_context = ""
 
-                response = get_response(role_prompt, messages)
-                if response:
-                    messages.append({"role": "assistant", "content": response})
-                    conversation.append(
-                        {"turn": i + 1, "role": role.name, "response": response}
-                    )
-                    print(f"{role.name}: {response}\n")
-                else:
-                    print(f"Failed to get {role.name} response. Skipping turn.")
-                    continue
+        # Process each role sequentially
+        for i, role in enumerate(roles):
+            logger.info(f"Processing role {i + 1}: {role.name}")
+
+            # Create role-specific prompt with accumulated context
+            role_prompt = f"""You are {role.name}: {role.description}
+
+Previous perspectives on "{user_prompt}":
+{dialogue_context}
+
+Your task is to:
+1. Acknowledge and directly reference at least one previous perspective, if any
+2. If you're the first to respond, simply state your own perspective
+3. If your perspective is different from the previous ones, clearly state the discrepancy
+4. Either build upon, contrast with, or synthesize the ideas presented
+5. Add your unique viewpoint as {role.name}
+4. Keep your response focused and under 150 words
+
+For example, if you're the Alchemist and previous speakers discussed consciousness:
+"Building on the Quantum Philosopher's observation about consciousness as an observer, 
+I see this through the lens of transformation..."
+
+Question: {user_prompt}
+
+Please provide your perspective while explicitly engaging with the previous responses."""
+
+            try:
+                logger.info(
+                    f"Making API call for {role.name} with context length: {len(dialogue_context)}"
+                )
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": role.prompt_template},
+                        {"role": "user", "content": role_prompt},
+                    ],
+                    temperature=0.7,
+                    max_tokens=200,
+                )
+
+                role_response = response.choices[0].message.content
+                logger.info(f"Response from {role.name}: {role_response}")
+
+                # Add to conversation and update context
+                conversation.append(
+                    {"turn": i + 1, "role": role.name, "response": role_response}
+                )
+
+                dialogue_context += f"\n\n{role.name}: {role_response}"
+
+            except Exception as e:
+                logger.error(f"Error getting response for {role.name}: {str(e)}")
+                continue
+
+        # Generate final synthesis
+        if conversation:
+            synthesis_prompt = f"""You are tasked with synthesizing this multi-perspective dialogue about: "{user_prompt}"
+
+Complete dialogue:
+{dialogue_context}
+
+Please provide:
+1. Key insights from each perspective
+2. Main points of agreement and disagreement
+3. A final synthesis that weaves these viewpoints together
+
+Keep your response concise and under 250 words."""
+
+            try:
+                logger.info("Generating final synthesis")
+                synthesis = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are synthesizing a philosophical dialogue.",
+                        },
+                        {"role": "user", "content": synthesis_prompt},
+                    ],
+                    temperature=0.7,
+                    max_tokens=400,
+                )
+
+                final_response = synthesis.choices[0].message.content
+                logger.info(f"Final synthesis: {final_response}")
+
+                # Add synthesis to conversation
+                conversation.append(
+                    {
+                        "turn": len(conversation) + 1,
+                        "role": "Synthesis",
+                        "response": final_response,
+                    }
+                )
+
+            except Exception as e:
+                logger.error(f"Error generating synthesis: {str(e)}")
+                return JsonResponse(
+                    {"error": "Failed to generate synthesis"}, status=500
+                )
+
         return JsonResponse(
-            {"original_prompt": user_prompt, "conversation": conversation}
+            {
+                "original_prompt": user_prompt,
+                "conversation": conversation,
+                "final_analysis": final_response if conversation else None,
+            }
         )
+
     except json.JSONDecodeError:
+        logger.error("JSON decode error", exc_info=True)
         return JsonResponse({"error": "Invalid JSON"}, status=400)
     except Exception as e:
+        logger.error(f"Error in full_dialogue: {str(e)}", exc_info=True)
         return JsonResponse({"error": str(e)}, status=500)
