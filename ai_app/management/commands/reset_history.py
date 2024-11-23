@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from ai_app.models import History
+from ai_app.models.history import History
 
 
 class Command(BaseCommand):

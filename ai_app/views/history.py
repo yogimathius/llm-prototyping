@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from ..models import History
+from ai_app.models.history import History
 from ..services.response_formatter import ResponseFormatter
 import logging
 

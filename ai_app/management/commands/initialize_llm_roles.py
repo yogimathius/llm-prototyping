@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from ai_app.models import LLMRole
+from ai_app.models.llm_role import LLMRole
 
 
 class Command(BaseCommand):

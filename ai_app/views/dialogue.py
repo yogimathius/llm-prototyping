@@ -1,9 +1,11 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from ..models import History, LLMRole, User
-from ..services.dialogue_generator import DialogueGenerator
-from ..services.model_rotation import OpenAIService
+from ai_app.models.history import History
+from ai_app.models.llm_role import LLMRole
+from ai_app.models.user import User
+from ai_app.services.dialogue_generator import DialogueGenerator
+from ai_app.services.model_rotation import OpenAIService
 import json
 import logging
 

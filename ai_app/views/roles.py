@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from ..models import LLMRole
-from ..services.response_formatter import ResponseFormatter
+from ai_app.models.llm_role import LLMRole
+from ai_app.services.response_formatter import ResponseFormatter
 
 
 @csrf_exempt
