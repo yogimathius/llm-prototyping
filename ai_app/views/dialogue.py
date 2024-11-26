@@ -16,22 +16,31 @@ logger = logging.getLogger("ai_app")
 @require_POST
 def ask_role(request):
     try:
+
+        if not request.body:
+            logger.error("Empty request body received")
+            return JsonResponse({"error": "Empty request body"}, status=400)
+
         data = json.loads(request.body)
         user_prompt = data.get("prompt")
         role_name = data.get("role")
 
         if not user_prompt or not role_name:
+            logger.error(
+                f"Missing required fields - prompt: {user_prompt}, role: {role_name}"
+            )
             return JsonResponse({"error": "Missing prompt or role"}, status=400)
 
         openai_service = OpenAIService()
         dialogue_generator = DialogueGenerator(openai_service)
+
         result = dialogue_generator.process_single_role(role_name, user_prompt)
 
         History.objects.create(
             user=User.objects.get(username="testuser"),
-            role=result["role"],
             prompt=user_prompt,
             response=result["raw_content"],
+            role=LLMRole.objects.get(name=role_name),
         )
 
         return JsonResponse(
@@ -46,7 +55,7 @@ def ask_role(request):
         )
 
     except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {str(e)}")
+        logger.error(f"JSON decode error: {str(e)}, Request body: {request.body}")
         return JsonResponse({"error": "Invalid JSON format"}, status=400)
     except LLMRole.DoesNotExist:
         return JsonResponse({"error": f"Role '{role_name}' not found"}, status=404)
@@ -61,14 +70,14 @@ def full_dialogue(request):
     try:
         data = json.loads(request.body)
         user_prompt = data.get("prompt")
-        logger.info(f"Received prompt: {user_prompt}")
-
+        should_debate = data.get("debate")
+        logger.info(f"Received debate: {should_debate}")
         if not user_prompt:
             return JsonResponse({"error": "No prompt provided"}, status=400)
 
         openai_service = OpenAIService()
         dialogue_generator = DialogueGenerator(openai_service)
-        result = dialogue_generator.process_full_dialogue(user_prompt)
+        result = dialogue_generator.process_full_dialogue(user_prompt, should_debate)
 
         return JsonResponse(
             {
@@ -92,8 +101,7 @@ def stream_dialogue(request):
     try:
         data = json.loads(request.body)
         user_prompt = data.get("prompt")
-        logger.info(f"Received prompt: {user_prompt}")
-
+        should_debate = data.get("debate")
         if not user_prompt:
             return JsonResponse({"error": "No prompt provided"}, status=400)
 
@@ -105,7 +113,9 @@ def stream_dialogue(request):
             yield json.dumps({"type": "start", "data": {"prompt": user_prompt}}) + "\n"
 
             # Stream each response
-            for response in dialogue_generator.stream_full_dialogue(user_prompt):
+            for response in dialogue_generator.stream_full_dialogue(
+                user_prompt, should_debate
+            ):
                 yield json.dumps(response) + "\n"
 
             # Send completion message
