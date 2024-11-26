@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from ai_app.models.history import History
@@ -83,4 +83,41 @@ def full_dialogue(request):
         return JsonResponse({"error": "Invalid JSON"}, status=400)
     except Exception as e:
         logger.error(f"Error in full_dialogue: {str(e)}", exc_info=True)
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def stream_dialogue(request):
+    try:
+        data = json.loads(request.body)
+        user_prompt = data.get("prompt")
+        logger.info(f"Received prompt: {user_prompt}")
+
+        if not user_prompt:
+            return JsonResponse({"error": "No prompt provided"}, status=400)
+
+        def response_stream():
+            openai_service = OpenAIService()
+            dialogue_generator = DialogueGenerator(openai_service)
+
+            # Send initial message
+            yield json.dumps({"type": "start", "data": {"prompt": user_prompt}}) + "\n"
+
+            # Stream each response
+            for response in dialogue_generator.stream_full_dialogue(user_prompt):
+                yield json.dumps(response) + "\n"
+
+            # Send completion message
+            yield json.dumps({"type": "complete", "data": None}) + "\n"
+
+        return StreamingHttpResponse(
+            response_stream(), content_type="application/x-ndjson"
+        )
+
+    except json.JSONDecodeError:
+        logger.error("JSON decode error", exc_info=True)
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    except Exception as e:
+        logger.error(f"Error in stream_dialogue: {str(e)}", exc_info=True)
         return JsonResponse({"error": str(e)}, status=500)
