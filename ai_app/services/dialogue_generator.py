@@ -131,15 +131,16 @@ class DialogueGenerator:
 
                     Reason for collaboration: {collab_decision["reasoning"]}
 
-                    Please structure your response as a JSON array of role-response pairs. Format as:
+                    Please structure your response as a JSON array of role-response pairs. 
+                    Keep each response concise (150-200 words) and complete. Format as:
                     [
-                        {{"role": "{role.name}", "response": "Initial perspective on the question"}},
-                        {{"role": "{collaborator.name}", "response": "Response with unique perspective"}},
-                        {{"role": "{role.name}", "response": "Building on the collaborator's insight"}},
+                        {{"role": "{role.name}", "response": "Initial perspective"}},
+                        {{"role": "{collaborator.name}", "response": "Response"}},
+                        {{"role": "{role.name}", "response": "Building on insights"}},
                         {{"role": "{collaborator.name}", "response": "Final insights"}},
-                        {{"role": "Synthesis", "response": "Brief conclusion drawing from both perspectives"}}
+                        {{"role": "Synthesis", "response": "Brief conclusion"}}
                     ]
-                """
+                    """
                 )
             except LLMRole.DoesNotExist:
                 logger.error(
@@ -210,37 +211,49 @@ class DialogueGenerator:
     def process_single_role(self, role_name: str, user_prompt: str) -> Dict:
         """Handle single role dialogue with optional collaboration"""
         role = LLMRole.objects.prefetch_related("collaborators").get(name=role_name)
-
         collaborators = role.collaborators.all()
-
         collab_decision = self.get_collaboration_decision(
             role, user_prompt, collaborators
         )
-
         system_prompt = self.create_system_prompt(role, collab_decision)
+
+        # Increase max_tokens for collaborative responses
+        max_tokens = 600 if collab_decision.get("should_collaborate") else 300
+
         content = self.openai_service.create_completion(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.7,
-            max_tokens=200,
+            max_tokens=max_tokens,  # Increased token limit
         )
 
         try:
-            # Add error handling for JSON parsing
             clean_content = (
                 content.replace("```json\n", "").replace("\n```", "").strip()
             )
-            if not clean_content:
-                # Fallback if no JSON is found
-                response_data = [{"role": role.name, "response": content}]
-            else:
-                try:
-                    response_data = json.loads(clean_content)
-                except json.JSONDecodeError:
-                    # Fallback if JSON parsing fails
-                    response_data = [{"role": role.name, "response": content}]
+
+            try:
+                parsed_data = json.loads(clean_content)
+                if not isinstance(parsed_data, list):
+                    parsed_data = [{"role": role.name, "response": clean_content}]
+
+                # Check for and handle incomplete responses
+                for item in parsed_data:
+                    if not isinstance(item, dict):
+                        continue
+                    response_text = item.get("response", "")
+                    if response_text.endswith(("...", ".", ",")):
+                        # Trim incomplete sentences
+                        last_sentence = response_text.rstrip(".,").rsplit(".", 1)[0]
+                        item["response"] = last_sentence + "."
+
+                response_data = parsed_data
+
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse JSON response: {clean_content}")
+                response_data = [{"role": role.name, "response": clean_content}]
 
             return {
                 "response_data": response_data,
@@ -248,9 +261,17 @@ class DialogueGenerator:
                 "role": role,
                 "raw_content": content,
             }
+
         except Exception as e:
             logger.error(f"Error processing response: {str(e)}, Content: {content}")
-            raise
+            return {
+                "response_data": [
+                    {"role": role.name, "response": "Error processing response"}
+                ],
+                "collab_decision": collab_decision,
+                "role": role,
+                "raw_content": content,
+            }
 
     def process_full_dialogue(self, user_prompt: str, should_debate: bool) -> Dict:
         """Handle multi-role dialogue with synthesis"""
