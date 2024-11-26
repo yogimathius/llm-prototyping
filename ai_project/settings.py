@@ -136,11 +136,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
-            "style": "{",
-        },
-        "simple": {
-            "format": "{levelname} {message}",
+            "format": "{asctime} {levelname} {module} {process:d} {thread:d} {pathname}:{lineno:d} {message}",
             "style": "{",
         },
     },
@@ -149,21 +145,11 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
-        "file": {
-            "class": "logging.FileHandler",
-            "filename": "debug.log",
-            "formatter": "verbose",
-        },
     },
     "loggers": {
-        "ai_app": {  # This matches your logger name
-            "handlers": ["console", "file"],
-            "level": "DEBUG",
-            "propagate": True,
-        },
-        "django": {
+        "ai_app": {
             "handlers": ["console"],
-            "level": "INFO",
+            "level": "DEBUG",
             "propagate": True,
         },
     },
