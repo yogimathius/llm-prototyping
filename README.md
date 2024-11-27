@@ -151,3 +151,79 @@ npm run dev
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request
+
+# AI Dialogue Project
+
+A Django/React application that facilitates dynamic conversations between different AI personas using OpenAI and Ollama.
+
+## Next Steps
+
+### 1. Randomize Full Dialogue Order
+
+- [ ] Add randomization to role selection in DialogueGenerator
+- [ ] Create method to shuffle roles while maintaining context
+- [ ] Add option to specify "first speaker" roles
+- [ ] Consider weighted randomization based on role relevance
+
+### 2. Enhance Ollama Integration
+
+- [ ] Add Ollama controls to frontend
+  - [ ] Toggle for Ollama/OpenAI
+  - [ ] Model selection dropdown
+  - [ ] Streaming controls
+- [ ] Implement streaming response handler
+  - [ ] Add loading states for stream chunks
+  - [ ] Show real-time token generation
+  - [ ] Add stop/cancel functionality
+- [ ] Model management
+  - [ ] List available Ollama models
+  - [ ] Show model status/availability
+  - [ ] Model performance metrics
+
+### 3. Context Enhancement with History
+
+- [ ] Create conversation memory system
+  - [ ] Define memory structure
+  - [ ] Set memory limits
+  - [ ] Implement cleanup strategies
+- [ ] Add history retrieval features
+  - [ ] Filter by role/topic
+  - [ ] Search functionality
+  - [ ] Relevance scoring
+- [ ] Implement context injection
+  - [ ] Add relevant history to prompts
+  - [ ] Allow manual history selection
+  - [ ] Create context window management
+
+### Future Considerations
+
+1. **Performance Optimization**
+
+   - [ ] Caching frequently used contexts
+   - [ ] Batch processing for history analysis
+   - [ ] Efficient memory management
+
+2. **User Experience**
+
+   - [ ] Visual feedback during streaming
+   - [ ] Progress indicators
+   - [ ] Response quality metrics
+
+3. **Advanced Features**
+   - [ ] Role relationship mapping
+   - [ ] Dynamic context weighting
+   - [ ] Conversation branching
+
+### Testing Strategy
+
+- [ ] Unit tests for randomization
+- [ ] Integration tests for streaming
+- [ ] Performance tests for history retrieval
+- [ ] End-to-end tests for full dialogue flow
+
+### Documentation Needs
+
+- [ ] API documentation updates
+- [ ] Streaming implementation guide
+- [ ] History integration examples
+- [ ] Configuration options
