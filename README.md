@@ -49,34 +49,6 @@ python manage.py migrate
 
 6. Initialize LLM roles and users:
 
-```python
-# scripts/initialize_roles.py
-from ai_app.models import LLMRole
-
-roles = [
-    {
-        "name": "Dream Interpreter",
-        "description": "I interpret dreams using various psychological and cultural perspectives.",
-        "system_prompt": "You are a dream interpreter..."
-    },
-    {
-        "name": "Consciousness Explorer",
-        "description": "I explore consciousness and its various states and phenomena.",
-        "system_prompt": "You are a consciousness explorer..."
-    }
-    # Add other roles as needed
-]
-
-for role_data in roles:
-    LLMRole.objects.get_or_create(
-        name=role_data["name"],
-        defaults={
-            "description": role_data["description"],
-            "system_prompt": role_data["system_prompt"]
-        }
-    )
-```
-
 Run the initialization script:
 
 ```bash
