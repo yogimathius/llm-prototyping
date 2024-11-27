@@ -117,6 +117,11 @@ class DialogueGenerator:
 
     def create_system_prompt(self, role, collab_decision):
         """Helper function to create system prompt based on collaboration decision"""
+        json_instruction = """
+        IMPORTANT: Your response must be valid JSON. Always wrap your response in square brackets,
+        use double quotes for strings, and ensure proper JSON formatting.
+        """
+
         if collab_decision.get("should_collaborate"):
             try:
                 collaborator = LLMRole.objects.get(
@@ -131,8 +136,8 @@ class DialogueGenerator:
 
                     Reason for collaboration: {collab_decision["reasoning"]}
 
-                    Please structure your response as a JSON array of role-response pairs. 
-                    Keep each response concise (150-200 words) and complete. Format as:
+                    {json_instruction}
+                    Format your response exactly like this:
                     [
                         {{"role": "{role.name}", "response": "Initial perspective"}},
                         {{"role": "{collaborator.name}", "response": "Response"}},
@@ -154,7 +159,8 @@ class DialogueGenerator:
 
             {role.prompt_template}
 
-            Please structure your response as a JSON array with a single role-response pair:
+            {json_instruction}
+            Format your response exactly like this:
             [
                 {{"role": "{role.name}", "response": "Your complete response here"}}
             ]

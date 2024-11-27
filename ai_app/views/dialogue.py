@@ -24,6 +24,7 @@ def ask_role(request):
         data = json.loads(request.body)
         user_prompt = data.get("prompt")
         role_name = data.get("role")
+        use_ollama = data.get("use_ollama", False)
 
         if not user_prompt or not role_name:
             logger.error(
@@ -31,7 +32,7 @@ def ask_role(request):
             )
             return JsonResponse({"error": "Missing prompt or role"}, status=400)
 
-        openai_service = OpenAIService()
+        openai_service = OpenAIService(use_ollama=use_ollama)
         dialogue_generator = DialogueGenerator(openai_service)
 
         result = dialogue_generator.process_single_role(role_name, user_prompt)
@@ -71,11 +72,12 @@ def full_dialogue(request):
         data = json.loads(request.body)
         user_prompt = data.get("prompt")
         should_debate = data.get("debate")
+        use_ollama = data.get("use_ollama", False)
         logger.info(f"Received debate: {should_debate}")
         if not user_prompt:
             return JsonResponse({"error": "No prompt provided"}, status=400)
 
-        openai_service = OpenAIService()
+        openai_service = OpenAIService(use_ollama=use_ollama)
         dialogue_generator = DialogueGenerator(openai_service)
         result = dialogue_generator.process_full_dialogue(user_prompt, should_debate)
 
@@ -102,11 +104,12 @@ def stream_dialogue(request):
         data = json.loads(request.body)
         user_prompt = data.get("prompt")
         should_debate = data.get("debate")
+        use_ollama = data.get("use_ollama", False)
         if not user_prompt:
             return JsonResponse({"error": "No prompt provided"}, status=400)
 
         def response_stream():
-            openai_service = OpenAIService()
+            openai_service = OpenAIService(use_ollama=use_ollama)
             dialogue_generator = DialogueGenerator(openai_service)
 
             # Send initial message
