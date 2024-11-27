@@ -1,0 +1,22 @@
+Frontend                    Backend                      AI Models
+┌──────────┐               ┌──────────┐                ┌──────────┐
+│          │  HTTP POST    │          │                │          │
+│ _index   ├──────────────►│ dialogue │                │ OpenAI   │
+│ .tsx     │               │ .py      │                │ API      │
+│          │               │          │    API Call    │          │
+│  Form    │               │ Views    ├───────────────►│    OR    │
+│Component │               │          │                │          │
+│          │               │          │    Stream      │ Ollama   │
+│          │◄──────────────┤Generator ◄───────────────┤ Local    │
+└──────────┘   Response    └────┬─────┘                └──────────┘
+                                │
+                                │
+                                ▼
+                           ┌──────────┐
+                           │  Django  │
+                           │   DB     │
+                           │          │
+                           │ History  │
+                           │ Roles    │
+                           │ Users    │
+                           └──────────┘
